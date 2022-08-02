@@ -5,8 +5,9 @@
 #TRABAJO FINAL: PREDDICCIÓN DE GASTO EN EDUCACIÓN #
 ###################################################
 
-setwd("C:/Users/Camila Ciurlo/Desktop/MeCA/Big data/Gasto_Educacion")
 rm(list = ls())
+setwd("C:/Users/Camila Ciurlo/Desktop/MeCA/Big data/Educando")
+
 
 #######----------Cargar librerías----------####### 
 
@@ -49,161 +50,280 @@ pacman::p_load(gridExtra, scales, ggcorrplot, e1071)
 library(haven)
 library(rpart)
 
+#######----------Cargar y primers fusiones de  bases de datos----------####### 
 
-#######----------Cargar bases de datos----------####### 
+C <- read_dta("C:/Users/Camila Ciurlo/Desktop/MeCA/Big data/Educando/Caracteristicas y_composicion_del_hogar.dta")#Características del hogar
+E <- read_dta("C:/Users/Camila Ciurlo/Desktop/MeCA/Big data/Educando/Educación.dta")#Educación
+FT <- read_dta("C:/Users/Camila Ciurlo/Desktop/MeCA/Big data/Educando/Fuerza de trabajo.dta")#Fuerza de trabjo
+V <- read_dta("C:/Users/Camila Ciurlo/Desktop/MeCA/Big data/Educando/Datos de la vivienda.dta")#Datos vivienda
+S <- read_dta("C:/Users/Camila Ciurlo/Desktop/MeCA/Big data/Educando/Servicios del hogar.dta")#Servicios del hogar
 
+# Merge 1
 
-C <- read_dta("C:/Users/Camila Ciurlo/Desktop/MeCA/Big data/Gasto_Educacion/Caracteristicas y composicion del hogar.dta")
-V <- read_dta("C:/Users/Camila Ciurlo/Desktop/MeCA/Big data/Gasto_Educacion/Datos de la vivienda.dta")
-E <- read_dta("C:/Users/Camila Ciurlo/Desktop/MeCA/Big data/Gasto_Educacion/Educación.dta")
-T <- read_dta("C:/Users/Camila Ciurlo/Desktop/MeCA/Big data/Gasto_Educacion/Fuerza de trabajo.dta")
-S <- read_dta("C:/Users/Camila Ciurlo/Desktop/MeCA/Big data/Gasto_Educacion/Servicios del hogar.dta")
+M1 <- as.data.frame(left_join(x=E , y=C, by=c("directorio", "secuencia_encuesta", 
+                                              "secuencia_p", "orden")))#Educación y características del hogar
 
-names(V)
+# Merge 2
 
+M2 <- as.data.frame(left_join(x=FT , y=M1, by=c("directorio", "secuencia_encuesta", 
+                                                "secuencia_p", "orden")))#Educación y fuerza de trabajo
 
-
-#######----------Merge bases de datos prueba 1----------####### 
-
-#put all data frames into list
-#BD <- list(C, V, E, T, S)    
-#merge all data frames together
-#BD %>% as.data.frame(reduce(full_join, by=c("directorio", "secuencia_encuesta", "secuencia_p", "orden")))
-
-#######----------Merge bases de datos----------####### 
-
-Primera <- as.data.frame(left_join(x=E , y=V, by=c("directorio", "secuencia_encuesta", "secuencia_p", "orden")))
-Segunda <- as.data.frame(left_join(x=Primera , y=S, by=c("directorio", "secuencia_encuesta", "secuencia_p", "orden")))
-Tercera <-  as.data.frame(left_join(x=C , y=T, by=c("directorio", "secuencia_encuesta", "secuencia_p", "orden")))
-BD_Final <- as.data.frame(left_join(x=Tercera , y=Segunda, by=c("directorio", "secuencia_encuesta", "secuencia_p", "orden")))
-
-
-
-#######----------Subset bases de dato----------####### 
-
-#Se trabaja con las variables relevantes para el modelo 
-
-
-ECV <- BD_Final [, c("directorio", "secuencia_encuesta", "secuencia_p", "orden", "p6020",  "fex_c", "p6040", "p6051",
-              "p5502", "p6071", "p6081", "p6087", "p6083", "p6088", "p8520s1", "p1_departamento", 
-              "region", "clase", "i_hogar", "i_ugasto", "percapita", "i_ou",
-                   "cant_personas_hogar", "p8587", "p8587s1", "p3341", "p3341s1", "p3342", "p3342s1",
-                   "p3343", "p3343s1", "p3344", "p3344s1", "p3345", "p3345s1", "p3346", "p3346s1", "p3347", "p3347s1",
-                   "p3348", "p3348s1", "p6240")] #Subset ECV 
-
-rm(BD_Final, C, E, Primera, S, Segunda, T, Tercera, V)
 
 
 #######----------Creación de variables----------####### 
 
-#Gasto en educación 
 
-#ECV = ECV %>%
-#group_by(directorio) %>%
-#mutate(Gasto = sum ("p3343s1", "p3344s1", "p3345s1", "p3346s1","p3347s1", "p3348s1", na.rm=T))
+# Jefe del hogar 
+
+M2$Jefe <- ifelse(M2$p6051==1,1,0)
+
+# Gasto en educación colapsado por jefe del hogar
+
+M2 = M2 %>%
+  mutate(Gasto = rowSums(M2[,c("p6180s1", "p3343s1", "p3344s1", "p3345s1", 
+                               "p3346s1","p3347s1", "p3348s1", "p8610s1", "p8614s1" )], na.rm=TRUE))
+
+M2 = M2 %>% 
+  group_by(directorio) %>% 
+  mutate(Gasto_h = sum(Gasto))
+
+M2$Gasto_E <- ifelse(M2$Jefe==1, M2$Gasto_h, NA)
+
+# Logro educactivo jefe del hogar
+
+M2$Logro[M2$p8587== 1 | M2$p8587== 2] <- 1
+M2$Logro[M2$p8587== 3 ] <- 2
+M2$Logro[M2$p8587== 4 ] <- 3
+M2$Logro[M2$p8587== 5 ] <- 4
+M2$Logro[M2$p8587== 6 | M2$p8587== 7] <- 5
+M2$Logro[M2$p8587== 8 | M2$p8587== 9] <- 6
+M2$Logro[M2$p8587== 10 | M2$p8587== 11] <- 7
+M2$Logro[M2$p8587== 12 | M2$p8587== 13] <- 8
 
 
+M2$Logro_Jefe <- ifelse(M2$Jefe==1, M2$Logro, NA)
+
+M2$Logro_Jefe <- factor(M2$Logro_Jefe, 
+                   labels = c("Ninguno", "Primaria", "Secundaria",
+                              "Media", "Técnica", "Tecnológica", "Universitaria", "Posgrado"))
+
+# Estado civil Jefe del hogar 
+
+M2$Estado <- ifelse(M2$Jefe==1 & M2$p5502==1 | M2$p5502== 2 | M2$p5502== 6,1, NA)
+M2$Estado <- ifelse(M2$Jefe==1 & M2$p5502==3 | M2$p5502== 4 | M2$p5502== 5,0, M2$Estado)
+
+M2$Sexo <- factor(M2$Estado, 
+                  labels = c("Soltero", "En pareja"))
+
+
+# Sexo Jefe del hogar 
+
+M2$Sexo <- ifelse(M2$Jefe==1 & M2$p6020==1,1,0)
+M2$Sexo <- factor(M2$Sexo, 
+                   labels = c("Mujer", "Hombre"))
+
+
+
+# Integrantes del hogar en edad escolar imputados al Jefe 
+
+M2$Jovenes <- ifelse(M2$p6040<18 & M2$p6051 == 3 & 4,1,0)
+M2 = M2 %>% 
+  group_by(directorio) %>% 
+  mutate(Jovenes2 = sum(Jovenes))
+
+M2$Escolares <- ifelse(M2$Jefe==1, M2$Jovenes2, NA)
+
+# Ocupados en el hogar imputados al Jefe 
+
+M2$Ocupados <- ifelse(M2$p6240==1,1,0)
+
+M2 = M2 %>% 
+  group_by(directorio) %>% 
+  mutate(Ocupados_h = sum(Ocupados))
+
+M2$Ocupacion <- ifelse(M2$Jefe==1, M2$Ocupados_h, NA)
+
+#######----------Subset base de datos y fusión con nuevos módulos----------####### 
+
+
+Subset1 <- M2 [, c("directorio", "secuencia_encuesta", "secuencia_p", "Sexo", "orden","fex_c",
+               "Jefe", "Gasto_E", "Logro_Jefe", "Estado", "Escolares", "Ocupacion" )] #Subset ECV 
+
+ECV_1 <- Subset1 %>%
+  group_by(directorio)%>%
+  filter(Jefe==1)%>%
+  summarize(secuencia_encuesta =(secuencia_encuesta),
+            secuencia_p=(secuencia_p),orden =(orden), factor = (fex_c),
+            Escolares=max(Escolares), Ocupados= max(Ocupacion), Gasto = max(Gasto_E), 
+            Logro_Jefe=(Logro_Jefe), Estado=(Estado), Sexo = (Sexo))
+
+# Fusión con mòdulos de hogares 
+
+
+M3 <- as.data.frame(left_join(x=ECV_1 , y=S, by=c("directorio", "orden")))#Educación y fuerza de trabajo
+
+
+# Creación variable electricidad
+
+M3$Electricidad <- ifelse(M3$p791==1 | M3$p791==2,1,0)
+
+# Subset 2
+
+names(M3)
+Subset2 <- M3 [, c("directorio", "orden", "Gasto", "Logro_Jefe", "factor", "Estado", "Escolares", "Ocupados", "Sexo", "cant_personas_hogar",
+                   "i_ugasto", "Electricidad")] #Subset ECV 
+
+# Fusión con mòdulos de hogares 
+
+M4 <- as.data.frame(left_join(x=V , y=Subset2, by=c("directorio", "orden")))#Educación y fuerza de trabajo
+
+# Creación de variables electricidad y zona 
+
+M4$Area <- ifelse(M4$clase==1,1,0)
+
+M4$Area <- factor(M4$Area, 
+                   labels = c("Rural", "Urbano"))
+
+
+# Seubset 3
+
+names(M4)
+Subset3 <- M4 [, c("directorio","factor", "orden"
+                   , "Gasto", "Logro_Jefe", "Estado", "Escolares", "Ocupados", "Sexo", "cant_personas_hogar",
+                   "i_ugasto", "Area", "Electricidad")] #Subset 3
+
+
+
+#######----------Base final y modelo----------####### 
+
+
+ECV <- subset(Subset3, Gasto!=0, i_ugasto!=0)
 ECV = ECV %>%
-  mutate(Gasto = rowSums(ECV[,c("p3343s1", "p3344s1", "p3345s1", "p3346s1","p3347s1", "p3348s1" )], na.rm=TRUE))
+  mutate(Logro_Jefe = ifelse(is.na(ECV$Logro_Jefe)==T,
+                             yes = 1,
+                             no = ECV$Logro_Jefe))
 
+is.na(ECV$Logro_Jefe)%>% table# Revisando NA
 
-#Jefe
-ECV$Jefe <- ifelse(ECV$p6051==1,1,0)
+# Creación Logaritmo del gasto
 
-#Escolaridad Jefe del hogar
+ECV$le <- log(ECV$Gasto) 
 
-#ECV$ESC <- ifelse(ECV$p8587==1 & 2 & 3, 0, 1)
-
-#Estado civil 
-ECV$Estado <- ifelse(ECV$p5502==1 & 2 & 6,1,0)
-
-#Sexo
-ECV$Sexo <- ifelse(ECV$p6020==1,1,0)
-
-#Energía
-ECV$Energia <- ifelse(ECV$p8520s1==1,1,0)
-
-#Nùmero de niños en edad escolar por hogar 
-
-ECV$Jovenes <- ifelse(ECV$p6040<18 & ECV$p6051 == 3 & 4,1,0)
-
-#Área
-ECV$Area <- ifelse(ECV$clase==1,1,0)
-
-#Ocupación
-
-ECV$Ocupados <- ifelse(ECV$p6240==1,1,0)
-is.na(ECV$p6240)
-
-#Perceptor de ingresos prueba 
-
-ECV$PI <-ifelse (ECV$p6040 <= 16 | ECV$p6040 >= 62 & ECV$Sexo== 1, 0, ECV$Ocupados)
-ECV$PI <-ifelse (ECV$p6040 <= 16 | ECV$p6040 >= 57 & ECV$Sexo== 0, 0, ECV$Ocupados)
-
-is.na(ECV)
-
-colSums(is.na(ECV))
-
-which(colSums(is.na(T))>0)
-
-names(which(colSums(is.na(T))>0))
-
-
-
-T$PI <- ifelse(ECV$p6040 <= 16 | ECV$p6040 > 62 & Sexo== 1, 0, Ocupados)
-
-rm(ocu_pred)
-rm(pred_arbol)
-
-#Subset base de trabajo 
-
-rm(Area, ECV_modelo, ECV_modelo_1, ECV_modelo2, Escolares, Gasto, Ocupados)
-rm(Train)
-rm(ECV_model)
-
-
-ECV_model <- ECV %>%
-  group_by(directorio) %>%
-  summarize(personas = max(cant_personas_hogar, na.rm = TRUE), 
-            Escolares=sum(Jovenes), ocupados= sum(Ocupados), Area= max(Area, na.rm = TRUE),
-            Ingreso = max(i_ugasto, na.rm = TRUE), Energia = max(Energia, na.rm = TRUE), Gasto = sum(Gasto))
-
-ECV_final <- ECV_model                                    # Duplicate data
-ECV_final [is.na(ECV_final) | ECV_final == "Inf"] <- NA  # Replace NaN & Inf with NA
-
-
-Modelo_1 = lm(Gasto ~ personas + Escolares + Area + Ingreso + Energia, data = ECV_final)
-summary(Modelo_1)
-
-
-
-arbol <- rpart(Ocupados ~Sexo + p6040 + Estado,
-               data = ECV, method = "class")
-
-pred_arbol <- as.data.frame (predict(arbol, type ="class"))
-
-ocu_pred <- cbind(T, pred_arbol)
-
-as.da
-
-#######----------Modelo 1: regresión lineal múltiple----------####### 
+# Modelo 
 
 set.seed(10101) 
-Train <- sample(1:nrow(ECV_model), size=0.7*nrow(ECV_model), replace = F)
-x.Train <- Train[id_Train, ]
-x.Test <- Train[-id_Train, ]
+id_Train <- sample(1:nrow(ECV), size=0.7*nrow(ECV), replace = F)
+train <- ECV[id_Train, ]
+test <- ECV[-id_Train, ]
 
-names(x.Train)
-Modelo_1 = lm(Ingpcug ~ Esc + Sexo + Edad + Edad2 + Jefe + Npersug + Vivienda + Habit, data = x.Train)
+
+# Modelo 1
+
+Modelo_1 = lm(le ~ Escolares + as.factor (Area) + Ocupados + Sexo + cant_personas_hogar +
+                Electricidad + as.factor (Logro_Jefe) + as.factor (Estado) + 
+                i_ugasto, data = train)
+
 summary(Modelo_1)
 
-is.na(ECV_model)
+# Modelo 2: solo las variables significativas
 
-colSums(is.na(ECV_model))
+Modelo_2 = lm(le ~ Escolares + Ocupados + 
+                Electricidad + as.factor (Logro_Jefe) + 
+                i_ugasto, data = train)
 
-which(colSums(is.na(my_df))>0)
+summary(Modelo_2)
 
-names(which(colSums(is.na(my_df))>0))
+#########----Métodos de regularización: predicción dentro de muestra----#####
 
 
+#Regresión lneal 
 
+Modelo_2 = lm(le ~ Escolares + Ocupados + 
+                Electricidad + as.factor (Logro_Jefe) + 
+                i_ugasto, data = train)
+
+# Predicción y MSE 
+
+y_hat_in<- predict(Modelo_2, train)
+y_real_in<-train$le
+MSE_1 <- mean ((y_hat_in-y_real_in)^2)
+RMSE_1 <-sqrt(MSE_1)
+
+#Ctrl
+ctrl <- trainControl(method = "cv",
+                     number = 5,
+                     summaryFunction = defaultSummary,
+                     classProbs = TRUE,
+                     verbose=FALSE,
+                     savePredictions = T)
+
+# Árboles
+set.seed(10101) 
+arbol <- train(le ~ Escolares + Ocupados + 
+                 Electricidad + as.factor (Logro_Jefe) + 
+                 i_ugasto, data = train, method = "rpart", trControl = ctrl,
+  parms=list(split='Gini'), tuneLength=200)
+
+arbol
+
+# Lasso 
+set.seed(10101) 
+lambda <- 10^seq(-2, 3, length = 10)
+lasso <- train(le ~ Escolares + Ocupados + 
+                    Electricidad + as.factor (Logro_Jefe) + 
+                    i_ugasto, data = train, method = "glmnet",
+               trControl = trainControl("cv", number = 10),
+               tuneGrid = expand.grid(alpha = 1,
+                                      lambda=lambda), preProcess = c("center", "scale"))
+lasso
+
+#Ridge
+set.seed(10101) 
+ridge <- train(le ~ Escolares + Ocupados + 
+                 Electricidad + as.factor (Logro_Jefe) + 
+                 i_ugasto, data = train, method = "glmnet",
+                  trControl = trainControl("cv", number = 10),
+                  tuneGrid = expand.grid(alpha = 0,lambda=lambda), preProcess = c("center", "scale"))
+ridge
+
+#Elastic Net
+set.seed(10101)
+Elastic_Net <- train(le ~ Escolares + Ocupados + 
+              Electricidad + as.factor (Logro_Jefe) + 
+              i_ugasto, data = train, method = "glmnet",
+              trControl = trainControl("cv", number = 10), preProcess = c("center", "scale"))
+Elastic_Net
+
+# Encontrando el mejor modelo para predecir 
+
+RMSE_1
+lasso
+ridge
+Elastic_Net
+arbol 
+
+# Predicción del gasto en educación por hogar 
+
+test$pred_MCO <- predict (Modelo_2, test)
+test$MCO_gasto <- exp(test$pred_MCO)
+
+test$pred_arbol <-predict(arbol,test)
+test$arbol_gasto <- exp(test$pred_arbol)
+
+test$pred_lasso <-predict(lasso,test)
+test$lasso_gasto <- exp(test$pred_lasso)
+
+test$pred_ridge <-predict(ridge,test)
+test$ridge_gasto <- exp(test$pred_ridge)
+
+test$pred_Enet <-predict(Elastic_Net,test)
+test$ridge_gasto <- exp(test$pred_Enet)
+
+test$Dif <- test$Gasto-test$arbol_gasto
+
+# Criterio de clasificación  
+
+test$clas <- ifelse(test$Dif>=200000 | test$Dif<= -200000, 1, 0)
+table(test$clas)
+
+mean (test$Dif)
