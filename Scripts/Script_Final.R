@@ -317,13 +317,46 @@ test$pred_ridge <-predict(ridge,test)
 test$ridge_gasto <- exp(test$pred_ridge)
 
 test$pred_Enet <-predict(Elastic_Net,test)
-test$ridge_gasto <- exp(test$pred_Enet)
+test$Enet_gasto <- exp(test$pred_Enet)
+
+# Dif arbol
 
 test$Dif <- test$Gasto-test$arbol_gasto
 
+# Dif MCO
+
+test$Dif_MCO <- test$Gasto-test$MCO_gasto
+
+# Dif lasso 
+
+test$Dif_lasso <- test$Gasto-test$lasso_gasto
+
+# Dif ridge 
+
+test$Dif_ridge <- test$Gasto-test$ridge_gasto
+
+# Dif Enet 
+
+test$Dif_Enet <- test$Gasto-test$Enet_gasto
+
+
 # Criterio de clasificación  
 
-test$clas <- ifelse(test$Dif>=200000 | test$Dif<= -200000, 1, 0)
-table(test$clas)
+test$clas_arbol <- ifelse(test$Dif>=150000 | test$Dif<= -150000, 1, 0)
+table(test$clas_arbol)
 
-mean (test$Dif)
+test$clas_MCO <- ifelse(test$Dif_MCO>=150000 | test$Dif_MCO<= -150000, 1, 0)
+table(test$clas_MCO)
+
+test$clas_lasso <- ifelse(test$Dif_lasso>=150000 | test$Dif_lasso<= -150000, 1, 0)
+table(test$clas_lasso)
+
+test$clas_ridge <- ifelse(test$Dif_ridge>=150000 | test$Dif_ridge<= -150000, 1, 0)
+table(test$clas_ridge)
+
+test$clas_Enet <- ifelse(test$Dif_Enet>=150000 | test$Dif_Enet<= -150000, 1, 0)
+table(test$clas_Enet)
+
+
+
+
