@@ -17,11 +17,8 @@ library(ggplot2)
 library(patchwork)
 library(caret)
 library(caTools)
-library(RColorBrewer)
 library(stargazer)
 library(dplyr)
-library(lubridate)
-library(tseries)
 library(car)
 library(foreign)
 library(timsac)
@@ -113,7 +110,7 @@ M2$Logro_Jefe <- factor(M2$Logro_Jefe,
 M2$Estado <- ifelse(M2$Jefe==1 & M2$p5502==1 | M2$p5502== 2 | M2$p5502== 6,1, NA)
 M2$Estado <- ifelse(M2$Jefe==1 & M2$p5502==3 | M2$p5502== 4 | M2$p5502== 5,0, M2$Estado)
 
-M2$Sexo <- factor(M2$Estado, 
+M2$Estado <- factor(M2$Estado, 
                   labels = c("Soltero", "En pareja"))
 
 
@@ -378,6 +375,9 @@ summary(test$Gasto)
 
 test$clas_arbol <- ifelse(test$Dif>=150000 | test$Dif<= -150000, 1, 0)
 table(test$clas_arbol)
+
+median(test$Gasto)
+median(test$arbol_gasto)
 
 
 ############################################################################
