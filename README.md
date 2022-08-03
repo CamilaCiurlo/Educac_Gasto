@@ -6,8 +6,7 @@ Bajo lo anteriormente expuesto, se emplean métodos de regularización, con la f
 
 
 Los inestigadores que participaron en este trabajo fueron:
-Camila Ciurlo Aragón
-Paolo Valcarcel Pineda
+Camila Ciurlo Aragón y Paolo Valcarcel Pineda
 
  
 
