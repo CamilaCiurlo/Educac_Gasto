@@ -1,3 +1,9 @@
+##########################################
+######## Paolo Valcarcel Pineda ##########
+######### Camila Cirulo Aragon ###########
+######### Proto modelo de Gasto ##########
+##########################################
+
 clear all
 cd "D:\NUEVO D\GEIH 2021\ENCV"
 
