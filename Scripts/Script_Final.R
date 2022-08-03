@@ -20,7 +20,6 @@ library(caTools)
 library(RColorBrewer)
 library(stargazer)
 library(dplyr)
-library("nycflights13")
 library(lubridate)
 library(tseries)
 library(car)
@@ -81,9 +80,9 @@ M2$Jefe <- ifelse(M2$p6051==1,1,0)
 
 # Gasto en educación colapsado por jefe del hogar
 
-M2 = M2 %>%
-  mutate(Gasto = rowSums(M2[,c("p6180s1", "p3343s1", "p3344s1", "p3345s1", 
-                               "p3346s1","p3347s1", "p3348s1", "p8610s1", "p8614s1" )], na.rm=TRUE))
+M2 = M2 %>% 
+  mutate(Gasto = rowSums(M2[,c("p6180s1", "p3343s1", "p3344s1", "p3345s1",  
+                               "p3346s1","p3347s1", "p3348s1", "p8614s1" )], na.rm=TRUE))
 
 M2 = M2 %>% 
   group_by(directorio) %>% 
@@ -229,18 +228,14 @@ ECV$Edad2 <- ECV$Edad^2
 
 #######----------Estadística descriptiva----------####### 
 
-ECV$PdelG <-(ECV$Gasto/ECV$i_ugasto)*100
-
-mean(ECV$PdelG)
-
 summary(ECV$Gasto)
 
 
 #Promedio del gasto en educación de acuerdo con el sexo del Jefe del hogar 
 
 gassex = aggregate(Gasto ~ Sexo, data = ECV, FUN = mean)
-colnames(gassex) <- c("Sexo jefe hogar","Promedio mensual de gasto en educación")
-export(gassex, "gassex5.xlsx")
+colnames(gassex) <- c("Sexo jefe hogar","Promedio de gasto en educación mes anterior")
+export(gassex, "gassex6.xlsx")
 
 
 #Promedio del gasto en educación por rangos de edad del Jefe del hogar 
@@ -265,8 +260,8 @@ ggplot(data = ECV, mapping = aes(x = Edad_jefe, y = Gasto/1000, options,
 summary(ECV$Area)
 
 gasarea = aggregate(Gasto ~ Area, data = ECV, FUN = mean)
-colnames(gasarea) <- c("Area","Promedio del gasto en educación")
-export(gasarea, "gasarea.xlsx")
+colnames(gasarea) <- c("Area","Promedio de gasto en educación mes anterior")
+export(gasarea, "gasarea1.xlsx")
 
 
 #######----------Modelos----------#######  
@@ -364,61 +359,27 @@ ridge
 Elastic_Net
 arbol 
 
-# Predicción del gasto en educación por hogar 
+# Predicción del gasto en educación por hogar con el mejor modelo
 
-test$pred_MCO <- predict (Modelo_2, test)
-test$MCO_gasto <- exp(test$pred_MCO)
+test$pred_arbol <-predict(arbol,test) #Predicción
+test$arbol_gasto <- exp(test$pred_arbol) #Exponencial
 
-test$pred_arbol <-predict(arbol,test)
-test$arbol_gasto <- exp(test$pred_arbol)
 
-test$pred_lasso <-predict(lasso,test)
-test$lasso_gasto <- exp(test$pred_lasso)
+#######----------Generando un criterio de clasificación----------####### 
 
-test$pred_ridge <-predict(ridge,test)
-test$ridge_gasto <- exp(test$pred_ridge)
-
-test$pred_Enet <-predict(Elastic_Net,test)
-test$Enet_gasto <- exp(test$pred_Enet)
-
-# Dif arbol
+# Diferencia entre el valor predicho y el de la muestra 
 
 test$Dif <- test$Gasto-test$arbol_gasto
-
-# Dif MCO
-
-test$Dif_MCO <- test$Gasto-test$MCO_gasto
-
-# Dif lasso 
-
-test$Dif_lasso <- test$Gasto-test$lasso_gasto
-
-# Dif ridge 
-
-test$Dif_ridge <- test$Gasto-test$ridge_gasto
-
-# Dif Enet 
-
-test$Dif_Enet <- test$Gasto-test$Enet_gasto
 
 
 # Criterio de clasificación  
 
+summary(test$Gasto)
+
 test$clas_arbol <- ifelse(test$Dif>=150000 | test$Dif<= -150000, 1, 0)
 table(test$clas_arbol)
 
-test$clas_MCO <- ifelse(test$Dif_MCO>=150000 | test$Dif_MCO<= -150000, 1, 0)
-table(test$clas_MCO)
 
-test$clas_lasso <- ifelse(test$Dif_lasso>=150000 | test$Dif_lasso<= -150000, 1, 0)
-table(test$clas_lasso)
-
-test$clas_ridge <- ifelse(test$Dif_ridge>=150000 | test$Dif_ridge<= -150000, 1, 0)
-table(test$clas_ridge)
-
-test$clas_Enet <- ifelse(test$Dif_Enet>=150000 | test$Dif_Enet<= -150000, 1, 0)
-table(test$clas_Enet)
-
-
+############################################################################
 
 
