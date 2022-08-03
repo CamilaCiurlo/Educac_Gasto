@@ -153,7 +153,7 @@ M2$Ocupacion <- ifelse(M2$Jefe==1, M2$Ocupados_h, NA)
 
 
 Subset1 <- M2 [, c("directorio", "secuencia_encuesta", "secuencia_p", "Sexo", "Edad", "Escolares", "orden","fex_c",
-               "Jefe", "Gasto_E", "Logro_Jefe", "Estado", "Ocupacion" )] #Subset ECV 
+               "Jefe", "Gasto_E", "Logro_Jefe", "Estado", "Ocupacion" )] #Subset 1 
 
 ECV_1 <- Subset1 %>%
   group_by(directorio)%>%
@@ -179,7 +179,7 @@ M3$Electricidad <- ifelse(M3$p791==1 | M3$p791==2,1,0)
 names(M3)
 Subset2 <- M3 [, c("directorio", "orden", "Gasto", "Logro_Jefe", "factor", "Estado", "Ocupados", "Sexo", 
                    "cant_personas_hogar", "Edad", "Escolares",
-                   "i_ugasto", "Electricidad")] #Subset ECV 
+                   "i_ugasto", "Electricidad")] #Subset 2 
 
 # Fusión con módulos de hogares 
 
@@ -220,7 +220,7 @@ is.na(ECV$Logro_Jefe)%>% table# Revisión NA
 
 
 
-# Creación Logaritmo del gasto
+# Creación Logaritmo del gasto y edad al cuadrado
 
 ECV$le <- log(ECV$Gasto) 
 
